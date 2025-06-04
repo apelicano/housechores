@@ -1,0 +1,66 @@
+/* Add your CSS styles here */
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+header {
+  background-color: #333;
+  color: #fff;
+  padding: 1rem;
+}
+
+nav ul {
+  list-style-type: none; /* Remove the default bullet points from the navigation list */
+  display: flex; /* Use flexbox to center the navigation links */
+  justify-content: center; /* Center the navigation links horizontally */
+  margin: 0;
+  padding: 0;
+}
+
+nav li {
+  margin: 0 1rem; /* Add some spacing between the navigation links */
+}
+
+nav a {
+  color: #fff;
+  text-decoration: none; /* Remove the default underline from the links */
+}
+
+main {
+  padding: 2rem;
+}
+
+.chore-list {
+  display: grid; /* Use a grid layout to display the chore cards */
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); /* Automatically fit the chore cards in the available space */
+  grid-gap: 1rem; /* Add some spacing between the chore cards */
+}
+
+.chore-card {
+  border: 1px solid #ccc; /* Add a border to the chore cards */
+  padding: 1rem;
+  border-radius: 5px; /* Add some rounded corners to the chore cards */
+}
+
+.progress-bar {
+  height: 20px;
+  background-color: #ccc; /* Set the background color of the progress bar */
+  border-radius: 10px; /* Add some rounded corners to the progress bar */
+  overflow: hidden; /* Hide any part of the progress bar that exceeds the container */
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background-color: #4CAF50; /* Set the color of the progress bar fill */
+  width: 0%; /* Initially, the progress bar fill is 0% */
+  transition: width 0.5s ease-in-out; /* Add a smooth transition when the progress bar fill changes */
+}
+
+footer {
+  background-color: #333;
+  color: #fff;
+  text-align: center;
+  padding: 1rem;
+}
