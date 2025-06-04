@@ -1,0 +1,164 @@
+/* Basic CSS reset to remove default browser styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Set up body styles: font, background, and padding for spacing */
+body {
+  font-family: Arial, sans-serif;
+  background-color: #f4f4f4; /* Light grey background for a clean look */
+  color: #333; /* Dark text for readability */
+  padding: 20px;
+}
+
+/* Header styling: centering text and adding spacing */
+header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+header h1 {
+  font-size: 2em;
+  color: #4CAF50; /* Green color to evoke motivation */
+}
+
+/* Main container styling: center content and limit width */
+main {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+/* Styling for the chore form */
+#chore-form {
+  background-color: #fff;
+  padding: 15px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  margin-bottom: 20px;
+}
+
+#chore-form h2 {
+  margin-bottom: 10px;
+}
+
+/* Make form labels block elements for easier reading */
+#chore-form label {
+  display: block;
+  margin-top: 10px;
+  font-weight: bold;
+}
+
+/* Style text and number inputs, and textareas */
+#chore-form input[type="text"],
+#chore-form input[type="number"],
+#chore-form textarea {
+  width: 100%;
+  padding: 8px;
+  margin-top: 5px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+/* Button styling for consistency */
+button {
+  margin-top: 15px;
+  padding: 10px 15px;
+  margin-right: 10px;
+  background-color: #4CAF50; /* Green background for action buttons */
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+#delete-btn {
+    margin-top: 15px;
+    padding: 10px 15px;
+    margin-right: 10px;
+    background-color: #f44336; /* Red background for delete button */
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+#delete-btn:hover {
+    background-color: #d32f2f;
+}
+
+/* Change button color on hover for a better user experience */
+button:hover {
+  background-color: #45a049;
+}
+
+/* Styling for the chore list section */
+#chore-list {
+  background-color: #fff;
+  padding: 15px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+}
+
+#chore-list h2 {
+  margin-bottom: 10px;
+}
+
+/* Style individual chore items */
+.chore-item {
+  border-bottom: 1px solid #eee;
+  padding: 10px 0;
+}
+
+.chore-item:last-child {
+  border-bottom: none;
+}
+
+/* Container for the visual progress bar */
+.progress-bar-container {
+  background-color: #e0e0e0; /* Grey background for the progress bar container */
+  border-radius: 5px;
+  overflow: hidden;
+  width: 100%;
+  height: 20px;
+  margin-top: 5px;
+}
+
+/* Style the progress bar itself; width will be updated dynamically */
+.progress-bar {
+  height: 100%;
+  text-align: center;
+  line-height: 20px;
+  color: white;
+  width: 0%; /* Default width set to 0% */
+  background-color: red; /* Default color, will change based on value */
+}
+
+/* Styling for the notifications section */
+#notifications {
+  margin-top: 30px;
+  background-color: #fff;
+  padding: 15px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+}
+
+#notifications h2 {
+  margin-bottom: 10px;
+}
+
+/* Responsive styling for smaller screens */
+@media (max-width: 600px) {
+  body {
+    padding: 10px;
+  }
+  
+  header h1 {
+    font-size: 1.5em;
+  }
+  
+  main {
+    width: 100%;
+  }
+}
