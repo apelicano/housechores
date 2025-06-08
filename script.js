@@ -1,48 +1,49 @@
-/* script.js */
+// Add a new global variable to track whether timestamps should be shown
+let showTimestamps = false;
 
-/*
-  This script manages the functionality of our Family Chore Tracker.
-  We've now added localStorage to save chores in the browser so data doesn't disappear on refresh.
-*/
+// Add Clear All and Toggle Timestamp buttons to the DOM
+const extraButtonsContainer = document.createElement('div');
+extraButtonsContainer.style.marginTop = '1rem';
 
-// Initialize the chore list from localStorage, or start with an empty array if none exists
-let choreList = JSON.parse(localStorage.getItem('choreList')) || [];
+const clearAllBtn = document.createElement('button');
+clearAllBtn.textContent = 'Clear All Chores';
+clearAllBtn.addEventListener('click', clearAllChores);
 
-// Get references to key HTML elements for use in the code
-const choreForm = document.getElementById('chore-form');
-const choreListDiv = document.getElementById('chore-list');
-const notifyBtn = document.getElementById('notify-btn');
+const toggleTimestampBtn = document.createElement('button');
+toggleTimestampBtn.textContent = 'Toggle Timestamps';
+toggleTimestampBtn.style.marginLeft = '10px';
+toggleTimestampBtn.addEventListener('click', () => {
+  showTimestamps = !showTimestamps;
+  renderChoreList();
+});
 
-// Render any saved chores when the page loads
-renderChoreList();
+extraButtonsContainer.appendChild(clearAllBtn);
+extraButtonsContainer.appendChild(toggleTimestampBtn);
+choreListDiv.before(extraButtonsContainer); // Add buttons above the chore list
 
-// Event listener for form submission to add a new chore
+// Add timestamp when a new chore is created
 choreForm.addEventListener('submit', function(event) {
-  event.preventDefault(); // Prevent page from refreshing
+  event.preventDefault();
 
   const title = document.getElementById('chore-title').value;
   const description = document.getElementById('chore-description').value;
   const progress = parseInt(document.getElementById('chore-progress').value, 10);
 
   const newChore = {
-    id: Date.now(), // Unique ID based on timestamp
+    id: Date.now(), // unique ID
     title,
     description,
-    progress
+    progress,
+    timestamp: new Date().toISOString() // Save when it was created
   };
 
-  choreList.push(newChore); // Add the new chore to the list
-  saveChores(); // Save updated list to localStorage
-  choreForm.reset(); // Clear form fields
-  renderChoreList(); // Refresh the display
+  choreList.push(newChore);
+  saveChores();
+  choreForm.reset();
+  renderChoreList();
 });
 
-/*
-  Function: renderChoreList
-  Purpose: Show the latest list of chores on the screen.
-*/
 function renderChoreList() {
-  // Clear current display (but keep heading)
   choreListDiv.innerHTML = '<h2>Your Chores</h2>';
 
   choreList.forEach(chore => {
@@ -57,6 +58,15 @@ function renderChoreList() {
     descElem.textContent = chore.description;
     choreItemDiv.appendChild(descElem);
 
+    if (showTimestamps && chore.timestamp) {
+      const timeElem = document.createElement('p');
+      const date = new Date(chore.timestamp);
+      timeElem.textContent = 'Added: ' + date.toLocaleString();
+      timeElem.style.fontSize = '0.8rem';
+      timeElem.style.color = '#666';
+      choreItemDiv.appendChild(timeElem);
+    }
+
     const progressContainer = document.createElement('div');
     progressContainer.classList.add('progress-bar-container');
 
@@ -65,7 +75,6 @@ function renderChoreList() {
     progressBar.style.width = chore.progress + '%';
     progressBar.textContent = chore.progress + '%';
 
-    // Change color depending on how much is done
     if (chore.progress < 50) {
       progressBar.style.backgroundColor = 'red';
     } else if (chore.progress < 100) {
@@ -77,96 +86,64 @@ function renderChoreList() {
     progressContainer.appendChild(progressBar);
     choreItemDiv.appendChild(progressContainer);
 
-    // Button to update progress
+    // Update progress
     const updateBtn = document.createElement('button');
     updateBtn.textContent = 'Update Progress';
-    updateBtn.addEventListener('click', function() {
+    updateBtn.addEventListener('click', function () {
       updateChoreProgress(chore.id);
     });
     choreItemDiv.appendChild(updateBtn);
 
-    // Button to delete the chore
+    // NEW: Update Task button
+    const editBtn = document.createElement('button');
+    editBtn.textContent = 'Edit Task';
+    editBtn.style.marginLeft = '5px';
+    editBtn.addEventListener('click', function () {
+      editChore(chore.id);
+    });
+    choreItemDiv.appendChild(editBtn);
+
+    // Delete
     const deleteBtn = document.createElement('button');
-    deleteBtn.id = 'delete-btn';
     deleteBtn.textContent = 'Delete Chore';
-    deleteBtn.addEventListener('click', function() {
+    deleteBtn.style.marginLeft = '5px';
+    deleteBtn.addEventListener('click', function () {
       deleteChore(chore.id);
     });
     choreItemDiv.appendChild(deleteBtn);
 
     choreListDiv.appendChild(choreItemDiv);
 
-    // If progress is 100%, trigger a "celebration"
     if (chore.progress === 100) {
       triggerConfetti();
     }
   });
 }
 
-/*
-  Function: updateChoreProgress
-  Purpose: Add 25% progress to a chore (max 100%) and save.
-*/
-function updateChoreProgress(choreId) {
+// NEW: Edit chore content (title, description, progress)
+function editChore(choreId) {
   const chore = choreList.find(c => c.id === choreId);
   if (chore) {
-    chore.progress = Math.min(chore.progress + 25, 100); // Don’t go over 100%
-    saveChores(); // Save changes to localStorage
-    renderChoreList(); // Refresh display
-  }
-}
+    const newTitle = prompt('Update title:', chore.title);
+    const newDescription = prompt('Update description:', chore.description);
+    const newProgress = prompt('Update progress (0–100):', chore.progress);
 
-/*
-  Function: deleteChore
-  Purpose: Remove a chore from the list and update storage.
-*/
-function deleteChore(choreId) {
-  choreList = choreList.filter(c => c.id !== choreId); // Keep everything except the deleted one
-  saveChores(); // Save new list
-  renderChoreList(); // Refresh display
-}
-
-/*
-  Function: triggerConfetti
-  Purpose: Visual celebration placeholder when a chore is done.
-*/
-function triggerConfetti() {
-  console.log("Confetti! Chore completed.");
-  // In a real app, add animated confetti here!
-}
-
-/*
-  Function: simulateNotification
-  Purpose: Show a browser notification reminding users about chores.
-*/
-function simulateNotification() {
-  if ('Notification' in window) {
-    if (Notification.permission === 'granted') {
-      new Notification("Reminder: Update your chore progress!", {
-        body: "Click here to update the task assigned to you."
-      });
-    } else if (Notification.permission !== 'denied') {
-      Notification.requestPermission().then(permission => {
-        if (permission === 'granted') {
-          simulateNotification();
-        }
-      });
+    if (newTitle !== null && newDescription !== null && newProgress !== null) {
+      chore.title = newTitle.trim();
+      chore.description = newDescription.trim();
+      const progressValue = parseInt(newProgress);
+      chore.progress = isNaN(progressValue) ? chore.progress : Math.max(0, Math.min(100, progressValue));
+      saveChores();
+      renderChoreList();
     }
-  } else {
-    alert("This browser does not support desktop notifications.");
   }
 }
 
-// Listen for the "Simulate Notification" button click
-notifyBtn.addEventListener('click', simulateNotification);
-
-/*
-  Function: saveChores
-  Purpose: Save the current chore list to the browser’s local storage.
-  This makes data persistent even when you refresh the page.
-*/
-function saveChores() {
-  localStorage.setItem('choreList', JSON.stringify(choreList));
+// NEW: Clear all chores
+function clearAllChores() {
+  if (confirm('Are you sure you want to delete all chores?')) {
+    choreList = [];
+    saveChores();
+    renderChoreList();
+  }
 }
-
-// End of script.js
