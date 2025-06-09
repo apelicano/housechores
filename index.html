@@ -1,64 +1,50 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Family Chore Tracker</title>
-  <link rel="stylesheet" href="styles.css">
-  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <header>
-    <h1>Family Chore Tracker</h1>
-  </header>
+  <h1>Family Chore Tracker</h1>
 
-  <main>
-    <section id="chore-management">
-      <form id="chore-form">
-        <h2>Add a New Chore</h2>
-        <label for="chore-title">Chore Title:</label>
-        <input type="text" id="chore-title" name="chore-title" placeholder="e.g., Clean Room" required>
+  <form id="chore-form">
+    <label for="chore-title">Title:</label><br/>
+    <input type="text" id="chore-title" required/><br/><br/>
 
-        <label for="chore-description">Description:</label>
-        <textarea id="chore-description" name="chore-description" placeholder="Step-by-step instructions..."></textarea>
+    <label for="chore-description">Description:</label><br/>
+    <textarea id="chore-description" required></textarea><br/><br/>
 
-        <label for="chore-progress">Progress (%):</label>
-        <input type="number" id="chore-progress" name="chore-progress" min="0" max="100" value="0" required>
+    <label for="chore-progress">Progress (%):</label><br/>
+    <input type="number" id="chore-progress" min="0" max="100" value="0" required/><br/><br/>
 
-        <button type="submit">Add Chore</button>
-      </form>
+    <button type="submit">Add Chore</button>
+  </form>
 
-      <!-- Control Buttons -->
-      <div id="controls">
-        <button id="clear-all-btn">Clear All Chores</button>
-        <button id="toggle-timestamps-btn">Toggle Timestamps</button>
-      </div>
+  <!-- Timestamp Toggle (initially hidden) -->
+  <div id="timestamp-toggle-wrapper">
+    <label>
+      <input type="checkbox" id="toggle-timestamp-checkbox"/>
+      Show Timestamps
+    </label>
+  </div>
 
-      <div id="chore-list">
-        <h2>Your Chores</h2>
-        <!-- Dynamic chore list -->
-      </div>
-    </section>
+  <!-- Chore list will be populated here -->
+  <div id="chore-list"></div>
 
-    <!-- <section id="notifications">
-      <h2>Simulated Notifications</h2>
-      <button id="notify-btn">Simulate Notification</button>
-      <div id="notification-actions"></div>
-    </section> -->
-  </main>
+  <!-- Action Buttons -->
+  <div style="margin-top: 1rem;">
+    <button id="clear-all-btn">Clear All Chores</button>
+    <!-- <button onclick="clearAllChores()">Clear All Chores</button> -->
+    <!-- notification currently unused -->
+    <!-- <button id="notify-btn" style="margin-left: 10px;">Notify Me</button> -->
+  </div>
 
+  <!-- Toast container -->
+  <div id="toast" class="toast"></div>
+
+  <!-- JavaScript -->
   <script src="script.js"></script>
-  <!-- <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('service-worker.js')
-        .then(registration => {
-          console.log('Service Worker registered with scope:', registration.scope);
-        })
-        .catch(error => {
-          console.log('Service Worker registration failed:', error);
-        });
-    }
-  </script> -->
 </body>
 </html>

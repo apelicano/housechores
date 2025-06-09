@@ -1,48 +1,144 @@
 /*
-  Family Chore Tracker – Updated Version
-  Includes: localStorage saving, chore editing, clearing all chores,
-  toggleable timestamps, and confetti placeholder.
+  Family Chore Tracker – Fully Enhanced
+  Features:
+  - localStorage saving
+  - chore editing
+  - clear all chores
+  - toggleable timestamps (via checkbox)
+  - toast notification on clear
 */
 
-// Store all chores
 let choreList = [];
-
-// Toggle for showing timestamps
 let showTimestamps = false;
 
-// Save current choreList to localStorage
+// DOM References
+const choreForm = document.getElementById('chore-form');
+const choreListDiv = document.getElementById('chore-list');
+// const notifyBtn = document.getElementById('notify-btn'); // Not in use currently
+
+// 🔒 Simple HTML sanitizer: allows <em>, <strong>, <a href="...">
+function sanitizeHTML(input) {
+  const allowedTags = {
+    'EM': [],
+    'STRONG': [],
+    'A': ['href', 'target', 'rel']
+  };
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(input, 'text/html');
+
+  function clean(node) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      return node.cloneNode();
+    }
+
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      const tagName = node.tagName.toUpperCase();
+
+      if (allowedTags.hasOwnProperty(tagName)) {
+        const el = document.createElement(tagName);
+
+        allowedTags[tagName].forEach(attr => {
+          if (node.hasAttribute(attr)) {
+            const val = node.getAttribute(attr);
+            if (attr === 'href') {
+              if (/^(https?:|mailto:)/i.test(val)) {
+                el.setAttribute(attr, val);
+              }
+            } else {
+              el.setAttribute(attr, val);
+            }
+          }
+        });
+
+        node.childNodes.forEach(child => {
+          const cleanChild = clean(child);
+          if (cleanChild) el.appendChild(cleanChild);
+        });
+
+        return el;
+      } else {
+        // Not allowed: skip tag but keep children
+        const fragment = document.createDocumentFragment();
+        node.childNodes.forEach(child => {
+          const cleanChild = clean(child);
+          if (cleanChild) fragment.appendChild(cleanChild);
+        });
+        return fragment;
+      }
+    }
+
+    return null;
+  }
+
+  const safeFragment = document.createDocumentFragment();
+  doc.body.childNodes.forEach(child => {
+    const cleanNode = clean(child);
+    if (cleanNode) safeFragment.appendChild(cleanNode);
+  });
+
+  const tempDiv = document.createElement('div');
+  tempDiv.appendChild(safeFragment);
+  return tempDiv.innerHTML;
+}
+
+
+// Load state from localStorage on page load
+window.addEventListener('DOMContentLoaded', () => {
+  const savedChores = localStorage.getItem('choreList');
+  const savedTimestampToggle = localStorage.getItem('showTimestamps');
+
+  if (savedChores) choreList = JSON.parse(savedChores);
+  if (savedTimestampToggle) showTimestamps = savedTimestampToggle === 'true';
+
+  const clearAllBtn = document.getElementById('clear-all-btn');
+  if (clearAllBtn) {
+    clearAllBtn.addEventListener('click', clearAllChores);
+  }
+  
+  
+  const checkbox = document.getElementById('toggle-timestamp-checkbox');
+  const checkboxWrapper = document.getElementById('timestamp-toggle-wrapper');
+  if (checkbox) checkbox.checked = showTimestamps;
+  if (checkboxWrapper) checkboxWrapper.style.display = choreList.length ? 'block' : 'none';
+
+  renderChoreList();
+});
+
+// Save chores to localStorage
 function saveChores() {
   localStorage.setItem('choreList', JSON.stringify(choreList));
 }
 
-// 🧾 Add new chore when form is submitted
-function setupFormListener() {
-  const choreForm = document.getElementById('chore-form');
-  choreForm.addEventListener('submit', function (event) {
-    event.preventDefault();
+// Add new chore
+choreForm.addEventListener('submit', function (event) {
+  event.preventDefault();
 
-    const title = document.getElementById('chore-title').value;
-    const description = document.getElementById('chore-description').value;
-    const progress = parseInt(document.getElementById('chore-progress').value, 10);
+  const title = document.getElementById('chore-title').value;
+  const description = document.getElementById('chore-description').value;
+  const progress = parseInt(document.getElementById('chore-progress').value, 10);
 
-    const newChore = {
-      id: Date.now(),
-      title,
-      description,
-      progress,
-      timestamp: new Date().toISOString()
-    };
+  const newChore = {
+    id: Date.now(),
+    title,
+    description,
+    progress,
+    timestamp: new Date().toISOString()
+  };
 
-    choreList.push(newChore);
-    saveChores();
-    choreForm.reset();
-    renderChoreList();
-  });
-}
+  choreList.push(newChore);
+  saveChores();
+  choreForm.reset();
 
-// ✏️ Render all chores
+  // Show timestamp toggle if it was hidden
+  const checkboxWrapper = document.getElementById('timestamp-toggle-wrapper');
+  if (checkboxWrapper) checkboxWrapper.style.display = 'block';
+
+  renderChoreList();
+});
+
+// Render all chores
 function renderChoreList() {
-  const choreListDiv = document.getElementById('chore-list');
   choreListDiv.innerHTML = '<h2>Your Chores</h2>';
 
   choreList.forEach(chore => {
@@ -54,10 +150,12 @@ function renderChoreList() {
     choreItemDiv.appendChild(titleElem);
 
     const descElem = document.createElement('p');
-    descElem.textContent = chore.description;
+    descElem.innerHTML = sanitizeHTML(chore.description).replace(/\n/g, '<br>');
+    // deprecated after sanitizeHTML implementation
+    // descElem.textContent = chore.description;
     choreItemDiv.appendChild(descElem);
 
-    // ⏰ Timestamp display
+    // Optional Timestamp
     if (showTimestamps && chore.timestamp) {
       const timeElem = document.createElement('p');
       const date = new Date(chore.timestamp);
@@ -67,7 +165,7 @@ function renderChoreList() {
       choreItemDiv.appendChild(timeElem);
     }
 
-    // 📊 Progress bar
+    // Progress Bar
     const progressContainer = document.createElement('div');
     progressContainer.classList.add('progress-bar-container');
 
@@ -87,31 +185,23 @@ function renderChoreList() {
     progressContainer.appendChild(progressBar);
     choreItemDiv.appendChild(progressContainer);
 
-    // 🔁 Update Progress
+    // Buttons
     const updateBtn = document.createElement('button');
     updateBtn.textContent = 'Update Progress';
-    updateBtn.addEventListener('click', function () {
-      updateChoreProgress(chore.id);
-    });
+    updateBtn.addEventListener('click', () => updateChoreProgress(chore.id));
     choreItemDiv.appendChild(updateBtn);
 
-    // ✏️ Edit Button
     const editBtn = document.createElement('button');
     editBtn.textContent = 'Edit Task';
     editBtn.style.marginLeft = '5px';
-    editBtn.addEventListener('click', function () {
-      editChore(chore.id);
-    });
+    editBtn.addEventListener('click', () => editChore(chore.id));
     choreItemDiv.appendChild(editBtn);
 
-    // 🗑️ Delete Button
     const deleteBtn = document.createElement('button');
     deleteBtn.textContent = 'Delete Chore';
     deleteBtn.style.marginLeft = '5px';
     deleteBtn.style.backgroundColor = '#f44336';
-    deleteBtn.addEventListener('click', function () {
-      deleteChore(chore.id);
-    });
+    deleteBtn.addEventListener('click', () => deleteChore(chore.id));
     choreItemDiv.appendChild(deleteBtn);
 
     choreListDiv.appendChild(choreItemDiv);
@@ -122,7 +212,7 @@ function renderChoreList() {
   });
 }
 
-// ➕ Update Progress
+// Update progress
 function updateChoreProgress(choreId) {
   const chore = choreList.find(c => c.id === choreId);
   if (chore) {
@@ -132,14 +222,20 @@ function updateChoreProgress(choreId) {
   }
 }
 
-// ✂️ Delete chore
+// Delete chore
 function deleteChore(choreId) {
   choreList = choreList.filter(c => c.id !== choreId);
   saveChores();
   renderChoreList();
+
+  // Hide timestamp toggle if list is now empty
+  if (choreList.length === 0) {
+    const checkboxWrapper = document.getElementById('timestamp-toggle-wrapper');
+    if (checkboxWrapper) checkboxWrapper.style.display = 'none';
+  }
 }
 
-// ✏️ Edit chore
+// Edit chore
 function editChore(choreId) {
   const chore = choreList.find(c => c.id === choreId);
   if (chore) {
@@ -158,21 +254,39 @@ function editChore(choreId) {
   }
 }
 
-// 🧼 Clear all chores
+// Clear all chores
 function clearAllChores() {
   if (confirm('Delete all chores? This cannot be undone!')) {
     choreList = [];
     saveChores();
+
+    // Reset timestamp state and hide toggle
+    showTimestamps = false;
+    localStorage.setItem('showTimestamps', 'false');
+
+    const checkbox = document.getElementById('toggle-timestamp-checkbox');
+    const wrapper = document.getElementById('timestamp-toggle-wrapper');
+    if (checkbox) checkbox.checked = false;
+    if (wrapper) wrapper.style.display = 'none';
+
     renderChoreList();
+    showToast("All chores cleared");
   }
 }
 
-// 🎉 Confetti placeholder
+// Simulate confetti
 function triggerConfetti() {
   console.log("🎉 Confetti! Chore completed.");
+  document.body.classList.add('confetti-bg');
+
+  setTimeout(() => {
+    document.body.classList.remove('confetti-bg');
+  }, 3000);
 }
 
-// 🔔 Simulated notification
+
+// 🔔 Notification simulation (currently unused)
+/*
 function simulateNotification() {
   if ('Notification' in window) {
     if (Notification.permission === 'granted') {
@@ -190,42 +304,34 @@ function simulateNotification() {
     alert("This browser does not support desktop notifications.");
   }
 }
+*/
 
-// 🔄 Init after DOM is ready
-window.addEventListener('DOMContentLoaded', () => {
-  const savedChores = localStorage.getItem('choreList');
-  if (savedChores) {
-    choreList = JSON.parse(savedChores);
-  }
 
-  // Attach form listener
-  setupFormListener();
-
-  // Render chore list
-  renderChoreList();
-
-  // Attach notify button
-  const notifyBtn = document.getElementById('notify-btn');
-  notifyBtn.addEventListener('click', simulateNotification);
-
-  // Add extra buttons: Clear All + Toggle Timestamp
-  const choreListDiv = document.getElementById('chore-list');
-  const extraButtonsContainer = document.createElement('div');
-  extraButtonsContainer.style.marginTop = '1rem';
-
-  const clearAllBtn = document.createElement('button');
-  clearAllBtn.textContent = 'Clear All Chores';
-  clearAllBtn.addEventListener('click', clearAllChores);
-
-  const toggleTimestampBtn = document.createElement('button');
-  toggleTimestampBtn.textContent = 'Toggle Timestamps';
-  toggleTimestampBtn.style.marginLeft = '10px';
-  toggleTimestampBtn.addEventListener('click', () => {
-    showTimestamps = !showTimestamps;
+// Handle toggle timestamp checkbox
+const timestampCheckbox = document.getElementById('toggle-timestamp-checkbox');
+if (timestampCheckbox) {
+  timestampCheckbox.addEventListener('change', () => {
+    showTimestamps = timestampCheckbox.checked;
+    localStorage.setItem('showTimestamps', showTimestamps);
     renderChoreList();
   });
+}
 
-  extraButtonsContainer.appendChild(clearAllBtn);
-  extraButtonsContainer.appendChild(toggleTimestampBtn);
-  choreListDiv.before(extraButtonsContainer);
-});
+// 📣 Attach event listener to Notify button (currently disabled)
+/*
+notifyBtn.addEventListener('click', simulateNotification);
+*/
+
+
+// Show toast message
+function showToast(message = "Action completed") {
+  const toast = document.getElementById('toast');
+  if (!toast) return;
+
+  toast.textContent = message;
+  toast.classList.add('show');
+
+  setTimeout(() => {
+    toast.classList.remove('show');
+  }, 3000);
+}
