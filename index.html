@@ -2,72 +2,55 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <!-- Ensures compatibility with older versions of Internet Explorer -->
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <!-- Sets the viewport for responsive design on different devices -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Family Chore Tracker</title>
-  
-  <!-- Link to external CSS file for styling -->
   <link rel="stylesheet" href="styles.css">
-  
-  <!-- Link to the Web App Manifest for installable PWA functionality -->
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
-  <!-- Header section: displays the title of the app -->
   <header>
     <h1>Family Chore Tracker</h1>
   </header>
 
-  <!-- Main content area -->
   <main>
-    <!-- Chore Management Section -->
     <section id="chore-management">
-      <!-- Form to add a new chore -->
       <form id="chore-form">
         <h2>Add a New Chore</h2>
-        <!-- Input for the chore title -->
         <label for="chore-title">Chore Title:</label>
         <input type="text" id="chore-title" name="chore-title" placeholder="e.g., Clean Room" required>
-        <br>
-        <!-- Textarea for the chore description/instructions -->
+
         <label for="chore-description">Description:</label>
         <textarea id="chore-description" name="chore-description" placeholder="Step-by-step instructions..."></textarea>
-        <br>
-        <!-- Input for the initial progress (0-100%) -->
+
         <label for="chore-progress">Progress (%):</label>
         <input type="number" id="chore-progress" name="chore-progress" min="0" max="100" value="0" required>
-        <br>
-        <!-- Button to submit the form and add the chore -->
+
         <button type="submit">Add Chore</button>
       </form>
 
-      <!-- Placeholder for the chore list that will be dynamically generated -->
+      <!-- Control Buttons -->
+      <div id="controls">
+        <button id="clear-all-btn">Clear All Chores</button>
+        <button id="toggle-timestamps-btn">Toggle Timestamps</button>
+      </div>
+
       <div id="chore-list">
         <h2>Your Chores</h2>
-        <!-- Individual chore items will appear here via JavaScript -->
+        <!-- Dynamic chore list -->
       </div>
     </section>
 
-    <!-- Notifications Section -->
     <section id="notifications">
       <h2>Simulated Notifications</h2>
-      <!-- Button to simulate a push notification -->
       <button id="notify-btn">Simulate Notification</button>
-      <!-- Div to hold further notification actions if needed -->
       <div id="notification-actions"></div>
     </section>
   </main>
 
-  <!-- Link to the external JavaScript file that adds interactivity -->
   <script src="script.js"></script>
-
-  <!-- Inline script to register a service worker for basic offline support (a key PWA feature) -->
   <script>
-    // Check if the browser supports service workers
     if ('serviceWorker' in navigator) {
-      // Register the service worker file for PWA functionality
       navigator.serviceWorker.register('service-worker.js')
         .then(registration => {
           console.log('Service Worker registered with scope:', registration.scope);
