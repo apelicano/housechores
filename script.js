@@ -1,28 +1,14 @@
 /*
   Family Chore Tracker – Updated Version
-  Now includes localStorage saving, chore editing, clearing all chores,
-  and toggleable timestamps.
+  Includes: localStorage saving, chore editing, clearing all chores,
+  toggleable timestamps, and confetti placeholder.
 */
 
-// Store all chores in this array
+// Store all chores
 let choreList = [];
 
-// Whether to show timestamps or not (default: off)
+// Toggle for showing timestamps
 let showTimestamps = false;
-
-// Get references to HTML elements
-const choreForm = document.getElementById('chore-form');
-const choreListDiv = document.getElementById('chore-list');
-const notifyBtn = document.getElementById('notify-btn');
-
-// 🔄 Load chores from browser storage when page loads
-window.addEventListener('DOMContentLoaded', () => {
-  const savedChores = localStorage.getItem('choreList');
-  if (savedChores) {
-    choreList = JSON.parse(savedChores);
-  }
-  renderChoreList();
-});
 
 // Save current choreList to localStorage
 function saveChores() {
@@ -30,29 +16,33 @@ function saveChores() {
 }
 
 // 🧾 Add new chore when form is submitted
-choreForm.addEventListener('submit', function (event) {
-  event.preventDefault();
+function setupFormListener() {
+  const choreForm = document.getElementById('chore-form');
+  choreForm.addEventListener('submit', function (event) {
+    event.preventDefault();
 
-  const title = document.getElementById('chore-title').value;
-  const description = document.getElementById('chore-description').value;
-  const progress = parseInt(document.getElementById('chore-progress').value, 10);
+    const title = document.getElementById('chore-title').value;
+    const description = document.getElementById('chore-description').value;
+    const progress = parseInt(document.getElementById('chore-progress').value, 10);
 
-  const newChore = {
-    id: Date.now(), // unique ID
-    title,
-    description,
-    progress,
-    timestamp: new Date().toISOString() // record when it was added
-  };
+    const newChore = {
+      id: Date.now(),
+      title,
+      description,
+      progress,
+      timestamp: new Date().toISOString()
+    };
 
-  choreList.push(newChore);
-  saveChores(); // Save to local storage
-  choreForm.reset();
-  renderChoreList();
-});
+    choreList.push(newChore);
+    saveChores();
+    choreForm.reset();
+    renderChoreList();
+  });
+}
 
-// ✏️ Render all chores to the page
+// ✏️ Render all chores
 function renderChoreList() {
+  const choreListDiv = document.getElementById('chore-list');
   choreListDiv.innerHTML = '<h2>Your Chores</h2>';
 
   choreList.forEach(chore => {
@@ -67,7 +57,7 @@ function renderChoreList() {
     descElem.textContent = chore.description;
     choreItemDiv.appendChild(descElem);
 
-    // ⏰ Optional timestamp
+    // ⏰ Timestamp display
     if (showTimestamps && chore.timestamp) {
       const timeElem = document.createElement('p');
       const date = new Date(chore.timestamp);
@@ -77,7 +67,7 @@ function renderChoreList() {
       choreItemDiv.appendChild(timeElem);
     }
 
-    // 📊 Progress bar setup
+    // 📊 Progress bar
     const progressContainer = document.createElement('div');
     progressContainer.classList.add('progress-bar-container');
 
@@ -86,7 +76,6 @@ function renderChoreList() {
     progressBar.style.width = chore.progress + '%';
     progressBar.textContent = chore.progress + '%';
 
-    // Color changes by progress level
     if (chore.progress < 50) {
       progressBar.style.backgroundColor = 'red';
     } else if (chore.progress < 100) {
@@ -98,7 +87,7 @@ function renderChoreList() {
     progressContainer.appendChild(progressBar);
     choreItemDiv.appendChild(progressContainer);
 
-    // 🔁 Update Progress Button
+    // 🔁 Update Progress
     const updateBtn = document.createElement('button');
     updateBtn.textContent = 'Update Progress';
     updateBtn.addEventListener('click', function () {
@@ -119,6 +108,7 @@ function renderChoreList() {
     const deleteBtn = document.createElement('button');
     deleteBtn.textContent = 'Delete Chore';
     deleteBtn.style.marginLeft = '5px';
+    deleteBtn.style.backgroundColor = '#f44336';
     deleteBtn.addEventListener('click', function () {
       deleteChore(chore.id);
     });
@@ -126,14 +116,13 @@ function renderChoreList() {
 
     choreListDiv.appendChild(choreItemDiv);
 
-    // 🎉 Celebration for full progress
     if (chore.progress === 100) {
       triggerConfetti();
     }
   });
 }
 
-// 🛠️ Update progress by 25% (up to 100%)
+// ➕ Update Progress
 function updateChoreProgress(choreId) {
   const chore = choreList.find(c => c.id === choreId);
   if (chore) {
@@ -143,14 +132,14 @@ function updateChoreProgress(choreId) {
   }
 }
 
-// ✂️ Delete a chore
+// ✂️ Delete chore
 function deleteChore(choreId) {
   choreList = choreList.filter(c => c.id !== choreId);
   saveChores();
   renderChoreList();
 }
 
-// ✏️ Edit chore details
+// ✏️ Edit chore
 function editChore(choreId) {
   const chore = choreList.find(c => c.id === choreId);
   if (chore) {
@@ -178,12 +167,12 @@ function clearAllChores() {
   }
 }
 
-// 🎉 Confetti trigger placeholder
+// 🎉 Confetti placeholder
 function triggerConfetti() {
   console.log("🎉 Confetti! Chore completed.");
 }
 
-// 🔔 Notification simulation
+// 🔔 Simulated notification
 function simulateNotification() {
   if ('Notification' in window) {
     if (Notification.permission === 'granted') {
@@ -202,25 +191,41 @@ function simulateNotification() {
   }
 }
 
-// 📣 Attach event listener to Notify button
-notifyBtn.addEventListener('click', simulateNotification);
+// 🔄 Init after DOM is ready
+window.addEventListener('DOMContentLoaded', () => {
+  const savedChores = localStorage.getItem('choreList');
+  if (savedChores) {
+    choreList = JSON.parse(savedChores);
+  }
 
-// ➕ Add "Clear All" and "Toggle Timestamp" buttons
-const extraButtonsContainer = document.createElement('div');
-extraButtonsContainer.style.marginTop = '1rem';
+  // Attach form listener
+  setupFormListener();
 
-const clearAllBtn = document.createElement('button');
-clearAllBtn.textContent = 'Clear All Chores';
-clearAllBtn.addEventListener('click', clearAllChores);
-
-const toggleTimestampBtn = document.createElement('button');
-toggleTimestampBtn.textContent = 'Toggle Timestamps';
-toggleTimestampBtn.style.marginLeft = '10px';
-toggleTimestampBtn.addEventListener('click', () => {
-  showTimestamps = !showTimestamps;
+  // Render chore list
   renderChoreList();
-});
 
-extraButtonsContainer.appendChild(clearAllBtn);
-extraButtonsContainer.appendChild(toggleTimestampBtn);
-choreListDiv.before(extraButtonsContainer);
+  // Attach notify button
+  const notifyBtn = document.getElementById('notify-btn');
+  notifyBtn.addEventListener('click', simulateNotification);
+
+  // Add extra buttons: Clear All + Toggle Timestamp
+  const choreListDiv = document.getElementById('chore-list');
+  const extraButtonsContainer = document.createElement('div');
+  extraButtonsContainer.style.marginTop = '1rem';
+
+  const clearAllBtn = document.createElement('button');
+  clearAllBtn.textContent = 'Clear All Chores';
+  clearAllBtn.addEventListener('click', clearAllChores);
+
+  const toggleTimestampBtn = document.createElement('button');
+  toggleTimestampBtn.textContent = 'Toggle Timestamps';
+  toggleTimestampBtn.style.marginLeft = '10px';
+  toggleTimestampBtn.addEventListener('click', () => {
+    showTimestamps = !showTimestamps;
+    renderChoreList();
+  });
+
+  extraButtonsContainer.appendChild(clearAllBtn);
+  extraButtonsContainer.appendChild(toggleTimestampBtn);
+  choreListDiv.before(extraButtonsContainer);
+});
