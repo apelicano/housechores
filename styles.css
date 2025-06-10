@@ -55,11 +55,30 @@ main {
 #chore-form textarea {
   width: 100%;
   padding: 8px;
-  margin-top: 5px;
-  margin-bottom: 12px;
+  margin-top: auto;
+  margin-bottom: auto;
   border: 1px solid #ccc;
   border-radius: 4px;
 }
+
+#chore-user {
+  width: auto;
+  height: auto;
+  padding: 8px;
+  margin-top: auto;
+  margin-bottom: auto;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.form-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 1em;
+  padding: 10px 25px;
+}
+
 
 /* ==== CHORE LIST ==== */
 #chore-list {

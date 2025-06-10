@@ -1,217 +1,184 @@
-/*
-  Family Chore Tracker – Fully Enhanced
-  Features:
-  - localStorage saving
-  - chore editing
-  - clear all chores
-  - toggleable timestamps (via checkbox)
-  - toast notification on clear
-*/
-  // Your web app's Firebase configuration
-  const firebaseConfig = {
-    apiKey: "AIzaSyBpCw-2-e8rR-4hZGE32-Ug6KJJcKSHnn8",
-    authDomain: "family-chore-tracker-db5b2.firebaseapp.com",
-    databaseURL: "https://family-chore-tracker-db5b2-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "family-chore-tracker-db5b2",
-    storageBucket: "family-chore-tracker-db5b2.firebasestorage.app",
-    messagingSenderId: "1021277258690",
-    appId: "1:1021277258690:web:2bd82da2661448fc800c5b"
-  };
+// =============================
+// Firebase Configuration
+// =============================
+const firebaseConfig = {
+  apiKey: "AIzaSyBpCw-2-e8rR-4hZGE32-Ug6KJJcKSHnn8",
+  authDomain: "family-chore-tracker-db5b2.firebaseapp.com",
+  databaseURL: "https://family-chore-tracker-db5b2-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "family-chore-tracker-db5b2",
+  storageBucket: "family-chore-tracker-db5b2.appspot.com",
+  messagingSenderId: "1021277258690",
+  appId: "1:1021277258690:web:2bd82da2661448fc800c5b"
+};
 
-  // Initialize Firebase
-  firebase.initializeApp(firebaseConfig);
-  
-  // Realtime Database reference
-  const db = firebase.database();
-  const choresRef = db.ref("chores");
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
 
+// Global state variables
 let choreList = [];
 let showTimestamps = false;
+let currentUserFilter = "All";
 
-// DOM References
-const choreForm = document.getElementById('chore-form');
-const choreListDiv = document.getElementById('chore-list');
-// const notifyBtn = document.getElementById('notify-btn'); // Not in use currently
-
-// 🔒 Simple HTML sanitizer: allows <em>, <strong>, <a href="...">
-function sanitizeHTML(input) {
-  const allowedTags = {
-    'EM': [],
-    'STRONG': [],
-    'A': ['href', 'target', 'rel']
-  };
-
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(input, 'text/html');
-
-  function clean(node) {
-    if (node.nodeType === Node.TEXT_NODE) {
-      return node.cloneNode();
-    }
-
-    if (node.nodeType === Node.ELEMENT_NODE) {
-      const tagName = node.tagName.toUpperCase();
-
-      if (allowedTags.hasOwnProperty(tagName)) {
-        const el = document.createElement(tagName);
-
-        allowedTags[tagName].forEach(attr => {
-          if (node.hasAttribute(attr)) {
-            const val = node.getAttribute(attr);
-            if (attr === 'href') {
-              if (/^(https?:|mailto:)/i.test(val)) {
-                el.setAttribute(attr, val);
-              }
-            } else {
-              el.setAttribute(attr, val);
-            }
-          }
-        });
-
-        node.childNodes.forEach(child => {
-          const cleanChild = clean(child);
-          if (cleanChild) el.appendChild(cleanChild);
-        });
-
-        return el;
-      } else {
-        // Not allowed: skip tag but keep children
-        const fragment = document.createDocumentFragment();
-        node.childNodes.forEach(child => {
-          const cleanChild = clean(child);
-          if (cleanChild) fragment.appendChild(cleanChild);
-        });
-        return fragment;
-      }
-    }
-
-    return null;
-  }
-
-  const safeFragment = document.createDocumentFragment();
-  doc.body.childNodes.forEach(child => {
-    const cleanNode = clean(child);
-    if (cleanNode) safeFragment.appendChild(cleanNode);
+// Anonymous sign-in to protect writes
+firebase.auth().signInAnonymously()
+  .then(() => {
+    console.log("✅ Signed in anonymously");
+    initApp(); // Proceed after successful auth
+  })
+  .catch((error) => {
+    console.error("❌ Anonymous sign-in failed:", error);
   });
 
-  const tempDiv = document.createElement('div');
-  tempDiv.appendChild(safeFragment);
-  return tempDiv.innerHTML;
-}
+// Firebase DB reference
+const db = firebase.database();
+const choresRef = db.ref("chores");
 
-window.addEventListener('DOMContentLoaded', () => {
-  const savedTimestampToggle = localStorage.getItem('showTimestamps');
-  if (savedTimestampToggle) showTimestamps = savedTimestampToggle === 'true';
+// =============================
+// App Initialization
+// =============================
+function initApp() {
+  const savedToggle = localStorage.getItem('showTimestamps');
+  if (savedToggle) showTimestamps = savedToggle === 'true';
 
   const checkbox = document.getElementById('toggle-timestamp-checkbox');
-  const checkboxWrapper = document.getElementById('timestamp-toggle-wrapper');
   if (checkbox) checkbox.checked = showTimestamps;
 
-  if (checkboxWrapper) checkboxWrapper.style.display = 'none';
-
-  // Fetch data from Firebase
-  const dbRef = firebase.database().ref('chores');
-
-  dbRef.once('value')
+  // Load chores from Firebase
+  choresRef.once('value')
     .then(snapshot => {
       const data = snapshot.val();
-      if (data) {
-        // Convert Firebase object into an array
-        choreList = Object.values(data);
-      }
+      choreList = data ? Object.values(data) : [];
+      updateUserFilterOptions();
       renderChoreList();
     })
     .catch(error => {
       console.error("Failed to load chores from Firebase:", error);
-      renderChoreList(); // Render empty list as fallback
+      choreList = [];
+      renderChoreList();
     });
 
-  // Set up Clear All button listener
+  // Attach event listeners
+  setupEventListeners();
+}
+
+// =============================
+// DOM References
+// =============================
+const choreForm = document.getElementById('chore-form');
+const choreListDiv = document.getElementById('chore-list');
+const userSelect = document.getElementById('chore-user');
+const filterSelect = document.getElementById('filter-user');
+
+// =============================
+// Event Listeners
+// =============================
+function setupEventListeners() {
+  // Form submission
+  choreForm.addEventListener('submit', event => {
+    event.preventDefault();
+    addNewChore();
+  });
+
+  // Timestamp toggle
+  const timestampCheckbox = document.getElementById('toggle-timestamp-checkbox');
+  if (timestampCheckbox) {
+    timestampCheckbox.addEventListener('change', () => {
+      showTimestamps = timestampCheckbox.checked;
+      localStorage.setItem('showTimestamps', showTimestamps);
+      renderChoreList();
+    });
+  }
+
+  // Clear all
   const clearAllBtn = document.getElementById('clear-all-btn');
   if (clearAllBtn) {
     clearAllBtn.addEventListener('click', clearAllChores);
   }
-});
 
+  // Filter by user
+  if (filterSelect) {
+    filterSelect.addEventListener('change', () => {
+      currentUserFilter = filterSelect.value;
+      renderChoreList();
+    });
+  }
+}
 
-
-// Save chores to Firebase Realtime Database
-// function saveChores() {
-//   choresRef.set(choreList);
-// }
-
-
-// Add new chore
-choreForm.addEventListener('submit', function (event) {
-  event.preventDefault();
-
-  const title = document.getElementById('chore-title').value;
-  const description = document.getElementById('chore-description').value;
+// =============================
+// Add New Chore
+// =============================
+function addNewChore() {
+  const title = document.getElementById('chore-title').value.trim();
+  const description = document.getElementById('chore-description').value.trim();
   const progress = parseInt(document.getElementById('chore-progress').value, 10);
+  const assignedTo = userSelect.value;
+
+  if (!title || !description || isNaN(progress)) {
+    showToast("❌ All fields required");
+    return;
+  }
 
   const newChore = {
     id: Date.now(),
     title,
     description,
     progress,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    user: assignedTo
   };
 
-  // Save to Firebase
-firebase.database().ref('chores/' + newChore.id).set(newChore)
-  .then(() => {
-    choreList.push(newChore); // Local copy for rendering
-    choreForm.reset();
+  choresRef.child(newChore.id).set(newChore)
+    .then(() => {
+      choreList.push(newChore);
+      choreForm.reset();
+      document.getElementById('timestamp-toggle-wrapper').style.display = 'block';
+      updateUserFilterOptions();
+      renderChoreList();
+    })
+    .catch(err => {
+      console.error("❌ Failed to add chore:", err);
+      showToast("❌ Could not save chore.");
+    });
+}
 
-    // Show timestamp toggle if it was hidden
-    const checkboxWrapper = document.getElementById('timestamp-toggle-wrapper');
-    if (checkboxWrapper) checkboxWrapper.style.display = 'block';
-
-    renderChoreList();
-  })
-  .catch(error => {
-    console.error("Failed to save chore to Firebase:", error);
-    showToast("❌ Failed to add chore. Please try again.");
-  });
-
-  choreForm.reset();
-
-  // Show timestamp toggle if it was hidden
-  const checkboxWrapper = document.getElementById('timestamp-toggle-wrapper');
-  if (checkboxWrapper) checkboxWrapper.style.display = 'block';
-
-  renderChoreList();
-});
-
-// Render all chores
+// =============================
+// Render Chore List
+// =============================
 function renderChoreList() {
   choreListDiv.innerHTML = '<h2>Your Chores</h2>';
 
-  choreList.forEach(chore => {
-    const choreItemDiv = document.createElement('div');
-    choreItemDiv.classList.add('chore-item');
+  const filtered = currentUserFilter === "All"
+    ? choreList
+    : choreList.filter(c => c.user === currentUserFilter);
+
+  if (filtered.length === 0) {
+    choreListDiv.innerHTML += "<p>No chores yet.</p>";
+    document.getElementById('timestamp-toggle-wrapper').style.display = 'none';
+    return;
+  }
+
+  document.getElementById('timestamp-toggle-wrapper').style.display = 'block';
+
+  filtered.forEach(chore => {
+    const choreItem = document.createElement('div');
+    choreItem.classList.add('chore-item');
 
     const titleElem = document.createElement('h3');
-    titleElem.textContent = chore.title;
-    choreItemDiv.appendChild(titleElem);
+    titleElem.textContent = `${chore.title} (${chore.user})`;
+    choreItem.appendChild(titleElem);
 
     const descElem = document.createElement('p');
     descElem.innerHTML = sanitizeHTML(chore.description).replace(/\n/g, '<br>');
-    // deprecated after sanitizeHTML implementation
-    // descElem.textContent = chore.description;
-    choreItemDiv.appendChild(descElem);
+    choreItem.appendChild(descElem);
 
-    // Optional Timestamp
     if (showTimestamps && chore.timestamp) {
       const timeElem = document.createElement('p');
-      const date = new Date(chore.timestamp);
-      timeElem.textContent = 'Added: ' + date.toLocaleString();
-      timeElem.style.fontSize = '0.8rem';
-      timeElem.style.color = '#666';
-      choreItemDiv.appendChild(timeElem);
+      timeElem.textContent = 'Added: ' + new Date(chore.timestamp).toLocaleString();
+      timeElem.classList.add('timestamp');
+      choreItem.appendChild(timeElem);
     }
 
-    // Progress Bar
+    // Progress bar
     const progressContainer = document.createElement('div');
     progressContainer.classList.add('progress-bar-container');
 
@@ -220,88 +187,78 @@ function renderChoreList() {
     progressBar.style.width = chore.progress + '%';
     progressBar.textContent = chore.progress + '%';
 
-    if (chore.progress < 50) {
-      progressBar.style.backgroundColor = 'red';
-    } else if (chore.progress < 100) {
-      progressBar.style.backgroundColor = 'orange';
-    } else {
-      progressBar.style.backgroundColor = 'green';
-    }
+    // Color based on progress level
+    progressBar.style.backgroundColor =
+      chore.progress === 100 ? 'green' :
+      chore.progress >= 50 ? 'orange' : 'red';
 
     progressContainer.appendChild(progressBar);
-    choreItemDiv.appendChild(progressContainer);
+    choreItem.appendChild(progressContainer);
 
     // Buttons
     const updateBtn = document.createElement('button');
     updateBtn.textContent = 'Update Progress';
     updateBtn.addEventListener('click', () => updateChoreProgress(chore.id));
-    choreItemDiv.appendChild(updateBtn);
+    choreItem.appendChild(updateBtn);
 
     const editBtn = document.createElement('button');
     editBtn.textContent = 'Edit Task';
     editBtn.style.marginLeft = '5px';
     editBtn.addEventListener('click', () => editChore(chore.id));
-    choreItemDiv.appendChild(editBtn);
+    choreItem.appendChild(editBtn);
 
     const deleteBtn = document.createElement('button');
     deleteBtn.textContent = 'Delete Chore';
     deleteBtn.style.marginLeft = '5px';
     deleteBtn.style.backgroundColor = '#f44336';
     deleteBtn.addEventListener('click', () => deleteChore(chore.id));
-    choreItemDiv.appendChild(deleteBtn);
+    choreItem.appendChild(deleteBtn);
 
-    choreListDiv.appendChild(choreItemDiv);
+    choreListDiv.appendChild(choreItem);
 
-    if (chore.progress === 100) {
-      triggerConfetti();
-    }
+    if (chore.progress === 100) triggerConfetti();
   });
 }
 
-// Update progress
+// =============================
+// Update Progress
+// =============================
 function updateChoreProgress(choreId) {
   const chore = choreList.find(c => c.id === choreId);
   if (!chore) return;
 
   const newProgress = Math.min(chore.progress + 25, 100);
-
-  // Update in Firebase
-  firebase.database().ref('chores/' + choreId).update({ progress: newProgress })
+  choresRef.child(choreId).update({ progress: newProgress })
     .then(() => {
-      chore.progress = newProgress; // Update local copy
+      chore.progress = newProgress;
       renderChoreList();
     })
     .catch(error => {
-      console.error("Failed to update progress:", error);
+      console.error("Progress update error:", error);
       showToast("❌ Failed to update progress");
     });
 }
 
-
-// Delete chore
+// =============================
+// Delete Chore
+// =============================
 function deleteChore(choreId) {
-  // Remove from Firebase
-  firebase.database().ref('chores/' + choreId).remove()
+  choresRef.child(choreId).remove()
     .then(() => {
-      // Update local list
       choreList = choreList.filter(c => c.id !== choreId);
       renderChoreList();
-
-      // Hide timestamp toggle if list is now empty
-      if (choreList.length === 0) {
-        const checkboxWrapper = document.getElementById('timestamp-toggle-wrapper');
-        if (checkboxWrapper) checkboxWrapper.style.display = 'none';
-      }
-
+      updateUserFilterOptions();
       showToast("Chore deleted");
     })
     .catch(error => {
-      console.error("Error deleting chore:", error);
+      console.error("Delete error:", error);
       showToast("❌ Failed to delete chore");
     });
 }
 
-// Edit chore
+// =============================
+// Edit Chore
+// =============================
 function editChore(choreId) {
   const chore = choreList.find(c => c.id === choreId);
   if (!chore) return;
@@ -309,129 +266,116 @@ function editChore(choreId) {
   const newTitle = prompt('Edit title:', chore.title);
   const newDesc = prompt('Edit description:', chore.description);
   const newProgress = prompt('Edit progress (0–100):', chore.progress);
+  const newUser = prompt('Edit assigned user:', chore.user);
 
-  if (newTitle !== null && newDesc !== null && newProgress !== null) {
-    const updatedChore = {
-      ...chore,
-      title: newTitle.trim(),
-      description: newDesc.trim(),
-      progress: Math.max(0, Math.min(100, parseInt(newProgress)))
-    };
+  if ([newTitle, newDesc, newProgress, newUser].some(v => v === null)) return;
 
-    // Update in Firebase
-    firebase.database().ref('chores/' + choreId).set(updatedChore)
-      .then(() => {
-        // Update local list and re-render
-        const index = choreList.findIndex(c => c.id === choreId);
-        if (index !== -1) {
-          choreList[index] = updatedChore;
-        }
-        renderChoreList();
-        showToast("Chore updated");
-      })
-      .catch(error => {
-        console.error("Error updating chore:", error);
-        showToast("❌ Failed to update chore");
-      });
-  }
+  const updated = {
+    ...chore,
+    title: newTitle.trim(),
+    description: newDesc.trim(),
+    user: newUser.trim(),
+    progress: Math.max(0, Math.min(100, parseInt(newProgress)))
+  };
+
+  choresRef.child(choreId).set(updated)
+    .then(() => {
+      const index = choreList.findIndex(c => c.id === choreId);
+      if (index !== -1) choreList[index] = updated;
+      updateUserFilterOptions();
+      renderChoreList();
+    })
+    .catch(err => {
+      console.error("Update error:", err);
+      showToast("❌ Failed to update chore");
+    });
 }
 
-
-// Clear all chores
+// =============================
+// Clear All Chores
+// =============================
 function clearAllChores() {
-  if (confirm('Delete all chores? This cannot be undone!')) {
-    // Remove all chores from Firebase
-    firebase.database().ref('chores').remove()
-      .then(() => {
-        choreList = [];
+  if (!confirm('Delete all chores?')) return;
 
-        // Reset timestamp state and hide toggle
-        showTimestamps = false;
-        localStorage.setItem('showTimestamps', 'false');
-
-        const checkbox = document.getElementById('toggle-timestamp-checkbox');
-        const wrapper = document.getElementById('timestamp-toggle-wrapper');
-        if (checkbox) checkbox.checked = false;
-        if (wrapper) wrapper.style.display = 'none';
-
-        renderChoreList();
-        showToast("All chores cleared");
-      })
-      .catch(error => {
-        console.error("Error clearing chores:", error);
-        showToast("❌ Failed to clear chores");
-      });
-  }
+  choresRef.remove()
+    .then(() => {
+      choreList = [];
+      showTimestamps = false;
+      localStorage.setItem('showTimestamps', 'false');
+      renderChoreList();
+      updateUserFilterOptions();
+    })
+    .catch(err => {
+      console.error("Clear error:", err);
+      showToast("❌ Failed to clear chores");
+    });
 }
 
+// =============================
+// Helpers
+// =============================
 
-
-// Simulate confetti
-function triggerConfetti() {
-  console.log("🎉 Confetti! Chore completed.");
-  document.body.classList.add('confetti-bg');
-
-  setTimeout(() => {
-    document.body.classList.remove('confetti-bg');
-  }, 3000);
+function updateUserFilterOptions() {
+  const users = Array.from(new Set(choreList.map(c => c.user))).sort();
+  filterSelect.innerHTML = `<option value="All">All</option>` +
+    users.map(u => `<option value="${u}">${u}</option>`).join('');
 }
 
-
-// 🔔 Notification simulation (currently unused)
-/*
-function simulateNotification() {
-  if ('Notification' in window) {
-    if (Notification.permission === 'granted') {
-      new Notification("Reminder: Update your chore progress!", {
-        body: "Click here to update the task assigned to you."
-      });
-    } else if (Notification.permission !== 'denied') {
-      Notification.requestPermission().then(permission => {
-        if (permission === 'granted') {
-          simulateNotification();
-        }
-      });
-    }
-  } else {
-    alert("This browser does not support desktop notifications.");
-  }
-}
-*/
-
-
-// Handle toggle timestamp checkbox
-const timestampCheckbox = document.getElementById('toggle-timestamp-checkbox');
-if (timestampCheckbox) {
-  timestampCheckbox.addEventListener('change', () => {
-    showTimestamps = timestampCheckbox.checked;
-    localStorage.setItem('showTimestamps', showTimestamps);
-    renderChoreList();
-  });
-}
-
-// 📣 Attach event listener to Notify button (currently disabled)
-/*
-notifyBtn.addEventListener('click', simulateNotification);
-*/
-
-
-// Show toast message
-function showToast(message = "Action completed") {
+function showToast(msg = "Action completed") {
   const toast = document.getElementById('toast');
   if (!toast) return;
 
-  toast.textContent = message;
+  toast.textContent = msg;
   toast.classList.add('show');
-
-  setTimeout(() => {
-    toast.classList.remove('show');
-  }, 3000);
+  setTimeout(() => toast.classList.remove('show'), 3000);
 }
 
-// code snippet from firebase
+function triggerConfetti() {
+  console.log("🎉 Confetti!");
+  document.body.classList.add('confetti-bg');
+  setTimeout(() => document.body.classList.remove('confetti-bg'), 3000);
+}
 
-  // Import the functions you need from the SDKs you need
-  
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
+// Basic HTML sanitizer (allows <a>, <em>, <strong>)
+function sanitizeHTML(input) {
+  const allowed = { 'A': ['href', 'target'], 'EM': [], 'STRONG': [] };
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(input, 'text/html');
 
+  function clean(node) {
+    if (node.nodeType === Node.TEXT_NODE) return node.cloneNode();
+    if (node.nodeType !== Node.ELEMENT_NODE) return null;
+
+    const tag = node.tagName.toUpperCase();
+    if (!allowed[tag]) {
+      const frag = document.createDocumentFragment();
+      node.childNodes.forEach(c => {
+        const n = clean(c);
+        if (n) frag.appendChild(n);
+      });
+      return frag;
+    }
+
+    const el = document.createElement(tag);
+    allowed[tag].forEach(attr => {
+      if (node.hasAttribute(attr)) {
+        el.setAttribute(attr, node.getAttribute(attr));
+      }
+    });
+    node.childNodes.forEach(c => {
+      const n = clean(c);
+      if (n) el.appendChild(n);
+    });
+    return el;
+  }
+
+  const result = document.createDocumentFragment();
+  doc.body.childNodes.forEach(n => {
+    const cleaned = clean(n);
+    if (cleaned) result.appendChild(cleaned);
+  });
+
+  const container = document.createElement('div');
+  container.appendChild(result);
+  return container.innerHTML;
+}

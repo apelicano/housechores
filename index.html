@@ -3,55 +3,77 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
   <title>Family Chore Tracker</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <h1>Family Chore Tracker</h1>
 
+  <!-- Chore creation form -->
   <form id="chore-form">
     <label for="chore-title">Title:</label><br/>
-    <input type="text" id="chore-title" required/><br/><br/>
+    <input type="text" id="chore-title" required /><br/><br/>
 
     <label for="chore-description">Description:</label><br/>
     <textarea id="chore-description" required></textarea><br/><br/>
 
     <label for="chore-progress">Progress (%):</label><br/>
-    <input type="number" id="chore-progress" min="0" max="100" value="0" required/><br/><br/>
+    <input type="number" id="chore-progress" min="0" max="100" value="0" required /><br/><br/>
+
+    <!-- Assign user to chore -->
+    <div class="form-row">
+    <label for="chore-user">Assign to:</label><br/>
+    <select id="chore-user" required>
+      <option value=""></option>
+      <option value="Adie">Adie</option>
+      <option value="Andrej">Andrej</option>
+      <option value="Arja">Arja</option>
+      <option value="Appa">Appa</option>
+      <option value="Momo">Momo</option>
+      <option value="Pumbaa">Pumbaa</option>
+      <option value="Timon">Timon</option>
+      <option value="Daddy">Daddy</option>
+      <option value="Mommy">Mommy</option>
+    </select>
+    </div>
+    <br/><br/>
 
     <button type="submit">Add Chore</button>
   </form>
 
-  <!-- Timestamp Toggle (initially hidden) -->
-  <div id="timestamp-toggle-wrapper">
+  <!-- Timestamp toggle (shown when there are chores) -->
+  <div id="timestamp-toggle-wrapper" style="display: none; margin-top: 1rem;">
     <label>
-      <input type="checkbox" id="toggle-timestamp-checkbox"/>
+      <input type="checkbox" id="toggle-timestamp-checkbox" />
       Show Timestamps
     </label>
   </div>
 
-  <!-- Chore list will be populated here -->
-  <div id="chore-list"></div>
-
-  <!-- Action Buttons -->
-  <div style="margin-top: 1rem;">
-    <button id="clear-all-btn">Clear All Chores</button>
-    <!-- <button onclick="clearAllChores()">Clear All Chores</button> -->
-    <!-- notification currently unused -->
-    <!-- <button id="notify-btn" style="margin-left: 10px;">Notify Me</button> -->
+  <!-- Filter chores by user -->
+  <div class="form-row">
+    <label for="filter-user">Filter by user:</label><br/>
+    <select id="filter-user">
+      <option value="All">All</option>
+    </select>
   </div>
 
-  <!-- Toast container -->
+  <!-- List of chores will appear here -->
+  <div id="chore-list"></div>
+
+  <!-- Action buttons -->
+  <div style="margin-top: 1rem;">
+    <button id="clear-all-btn">Clear All Chores</button>
+  </div>
+
+  <!-- Toast notification container -->
   <div id="toast" class="toast"></div>
 
-  <!-- Firebase App (core) -->
+  <!-- Firebase scripts -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-
-  <!-- Firebase Realtime Database -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 
-  <!-- JavaScript -->
+  <!-- Your app script -->
   <script src="script.js"></script>
 </body>
 </html>
