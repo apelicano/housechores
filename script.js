@@ -7,6 +7,23 @@
   - toggleable timestamps (via checkbox)
   - toast notification on clear
 */
+  // Your web app's Firebase configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyBpCw-2-e8rR-4hZGE32-Ug6KJJcKSHnn8",
+    authDomain: "family-chore-tracker-db5b2.firebaseapp.com",
+    databaseURL: "https://family-chore-tracker-db5b2-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "family-chore-tracker-db5b2",
+    storageBucket: "family-chore-tracker-db5b2.firebasestorage.app",
+    messagingSenderId: "1021277258690",
+    appId: "1:1021277258690:web:2bd82da2661448fc800c5b"
+  };
+
+  // Initialize Firebase
+  firebase.initializeApp(firebaseConfig);
+  
+  // Realtime Database reference
+  const db = firebase.database();
+  const choresRef = db.ref("chores");
 
 let choreList = [];
 let showTimestamps = false;
@@ -82,33 +99,36 @@ function sanitizeHTML(input) {
   return tempDiv.innerHTML;
 }
 
-
-// Load state from localStorage on page load
+// Load state from localStorage + Firebase on page load
 window.addEventListener('DOMContentLoaded', () => {
-  const savedChores = localStorage.getItem('choreList');
   const savedTimestampToggle = localStorage.getItem('showTimestamps');
-
-  if (savedChores) choreList = JSON.parse(savedChores);
   if (savedTimestampToggle) showTimestamps = savedTimestampToggle === 'true';
 
   const clearAllBtn = document.getElementById('clear-all-btn');
-  if (clearAllBtn) {
-    clearAllBtn.addEventListener('click', clearAllChores);
-  }
-  
-  
+  if (clearAllBtn) clearAllBtn.addEventListener('click', clearAllChores);
+
   const checkbox = document.getElementById('toggle-timestamp-checkbox');
   const checkboxWrapper = document.getElementById('timestamp-toggle-wrapper');
   if (checkbox) checkbox.checked = showTimestamps;
-  if (checkboxWrapper) checkboxWrapper.style.display = choreList.length ? 'block' : 'none';
 
-  renderChoreList();
+  // 🔥 Load from Firebase
+  choresRef.on('value', (snapshot) => {
+    const data = snapshot.val();
+    choreList = data ? data : [];
+
+    // Show timestamp toggle if any chores exist
+    if (checkboxWrapper) checkboxWrapper.style.display = choreList.length ? 'block' : 'none';
+
+    renderChoreList();
+  });
 });
 
-// Save chores to localStorage
+
+// Save chores to Firebase Realtime Database
 function saveChores() {
-  localStorage.setItem('choreList', JSON.stringify(choreList));
+  choresRef.set(choreList);
 }
+
 
 // Add new chore
 choreForm.addEventListener('submit', function (event) {
@@ -258,7 +278,7 @@ function editChore(choreId) {
 function clearAllChores() {
   if (confirm('Delete all chores? This cannot be undone!')) {
     choreList = [];
-    saveChores();
+    choresRef.set([]); // 🔥 Clear in Firebase
 
     // Reset timestamp state and hide toggle
     showTimestamps = false;
@@ -273,6 +293,7 @@ function clearAllChores() {
     showToast("All chores cleared");
   }
 }
+
 
 // Simulate confetti
 function triggerConfetti() {
@@ -335,3 +356,11 @@ function showToast(message = "Action completed") {
     toast.classList.remove('show');
   }, 3000);
 }
+
+// code snippet from firebase
+
+  // Import the functions you need from the SDKs you need
+  
+  // TODO: Add SDKs for Firebase products that you want to use
+  // https://firebase.google.com/docs/web/setup#available-libraries
+

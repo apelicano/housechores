@@ -103,7 +103,7 @@ main {
 .confetti-bg {
   background-image: url("https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExdmdpcXdmNTZhMm45MTJtbTR2Ymw2dmZscTFxd29vcHNwdnExaHVrbCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/5jT0jaNDsM6Ik7X9yq/giphy.gif");
   background-repeat: repeat;
-  background-size: cover;
+  background-size: auto;
 }
 
 
