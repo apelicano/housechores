@@ -99,35 +99,46 @@ function sanitizeHTML(input) {
   return tempDiv.innerHTML;
 }
 
-// Load state from localStorage + Firebase on page load
 window.addEventListener('DOMContentLoaded', () => {
   const savedTimestampToggle = localStorage.getItem('showTimestamps');
   if (savedTimestampToggle) showTimestamps = savedTimestampToggle === 'true';
-
-  const clearAllBtn = document.getElementById('clear-all-btn');
-  if (clearAllBtn) clearAllBtn.addEventListener('click', clearAllChores);
 
   const checkbox = document.getElementById('toggle-timestamp-checkbox');
   const checkboxWrapper = document.getElementById('timestamp-toggle-wrapper');
   if (checkbox) checkbox.checked = showTimestamps;
 
-  // 🔥 Load from Firebase
-  choresRef.on('value', (snapshot) => {
-    const data = snapshot.val();
-    choreList = data ? data : [];
+  if (checkboxWrapper) checkboxWrapper.style.display = 'none';
 
-    // Show timestamp toggle if any chores exist
-    if (checkboxWrapper) checkboxWrapper.style.display = choreList.length ? 'block' : 'none';
+  // Fetch data from Firebase
+  const dbRef = firebase.database().ref('chores');
 
-    renderChoreList();
-  });
+  dbRef.once('value')
+    .then(snapshot => {
+      const data = snapshot.val();
+      if (data) {
+        // Convert Firebase object into an array
+        choreList = Object.values(data);
+      }
+      renderChoreList();
+    })
+    .catch(error => {
+      console.error("Failed to load chores from Firebase:", error);
+      renderChoreList(); // Render empty list as fallback
+    });
+
+  // Set up Clear All button listener
+  const clearAllBtn = document.getElementById('clear-all-btn');
+  if (clearAllBtn) {
+    clearAllBtn.addEventListener('click', clearAllChores);
+  }
 });
 
 
+
 // Save chores to Firebase Realtime Database
-function saveChores() {
-  choresRef.set(choreList);
-}
+// function saveChores() {
+//   choresRef.set(choreList);
+// }
 
 
 // Add new chore
@@ -146,8 +157,23 @@ choreForm.addEventListener('submit', function (event) {
     timestamp: new Date().toISOString()
   };
 
-  choreList.push(newChore);
-  saveChores();
+  // Save to Firebase
+firebase.database().ref('chores/' + newChore.id).set(newChore)
+  .then(() => {
+    choreList.push(newChore); // Local copy for rendering
+    choreForm.reset();
+
+    // Show timestamp toggle if it was hidden
+    const checkboxWrapper = document.getElementById('timestamp-toggle-wrapper');
+    if (checkboxWrapper) checkboxWrapper.style.display = 'block';
+
+    renderChoreList();
+  })
+  .catch(error => {
+    console.error("Failed to save chore to Firebase:", error);
+    showToast("❌ Failed to add chore. Please try again.");
+  });
+
   choreForm.reset();
 
   // Show timestamp toggle if it was hidden
@@ -235,64 +261,109 @@ function renderChoreList() {
 // Update progress
 function updateChoreProgress(choreId) {
   const chore = choreList.find(c => c.id === choreId);
-  if (chore) {
-    chore.progress = Math.min(chore.progress + 25, 100);
-    saveChores();
-    renderChoreList();
-  }
+  if (!chore) return;
+
+  const newProgress = Math.min(chore.progress + 25, 100);
+
+  // Update in Firebase
+  firebase.database().ref('chores/' + choreId).update({ progress: newProgress })
+    .then(() => {
+      chore.progress = newProgress; // Update local copy
+      renderChoreList();
+    })
+    .catch(error => {
+      console.error("Failed to update progress:", error);
+      showToast("❌ Failed to update progress");
+    });
 }
+
 
 // Delete chore
 function deleteChore(choreId) {
-  choreList = choreList.filter(c => c.id !== choreId);
-  saveChores();
-  renderChoreList();
+  // Remove from Firebase
+  firebase.database().ref('chores/' + choreId).remove()
+    .then(() => {
+      // Update local list
+      choreList = choreList.filter(c => c.id !== choreId);
+      renderChoreList();
 
-  // Hide timestamp toggle if list is now empty
-  if (choreList.length === 0) {
-    const checkboxWrapper = document.getElementById('timestamp-toggle-wrapper');
-    if (checkboxWrapper) checkboxWrapper.style.display = 'none';
-  }
+      // Hide timestamp toggle if list is now empty
+      if (choreList.length === 0) {
+        const checkboxWrapper = document.getElementById('timestamp-toggle-wrapper');
+        if (checkboxWrapper) checkboxWrapper.style.display = 'none';
+      }
+
+      showToast("Chore deleted");
+    })
+    .catch(error => {
+      console.error("Error deleting chore:", error);
+      showToast("❌ Failed to delete chore");
+    });
 }
 
 // Edit chore
 function editChore(choreId) {
   const chore = choreList.find(c => c.id === choreId);
-  if (chore) {
-    const newTitle = prompt('Edit title:', chore.title);
-    const newDesc = prompt('Edit description:', chore.description);
-    const newProgress = prompt('Edit progress (0–100):', chore.progress);
+  if (!chore) return;
 
-    if (newTitle !== null && newDesc !== null && newProgress !== null) {
-      chore.title = newTitle.trim();
-      chore.description = newDesc.trim();
-      const parsedProgress = parseInt(newProgress);
-      chore.progress = isNaN(parsedProgress) ? chore.progress : Math.max(0, Math.min(100, parsedProgress));
-      saveChores();
-      renderChoreList();
-    }
+  const newTitle = prompt('Edit title:', chore.title);
+  const newDesc = prompt('Edit description:', chore.description);
+  const newProgress = prompt('Edit progress (0–100):', chore.progress);
+
+  if (newTitle !== null && newDesc !== null && newProgress !== null) {
+    const updatedChore = {
+      ...chore,
+      title: newTitle.trim(),
+      description: newDesc.trim(),
+      progress: Math.max(0, Math.min(100, parseInt(newProgress)))
+    };
+
+    // Update in Firebase
+    firebase.database().ref('chores/' + choreId).set(updatedChore)
+      .then(() => {
+        // Update local list and re-render
+        const index = choreList.findIndex(c => c.id === choreId);
+        if (index !== -1) {
+          choreList[index] = updatedChore;
+        }
+        renderChoreList();
+        showToast("Chore updated");
+      })
+      .catch(error => {
+        console.error("Error updating chore:", error);
+        showToast("❌ Failed to update chore");
+      });
   }
 }
+
 
 // Clear all chores
 function clearAllChores() {
   if (confirm('Delete all chores? This cannot be undone!')) {
-    choreList = [];
-    choresRef.set([]); // 🔥 Clear in Firebase
+    // Remove all chores from Firebase
+    firebase.database().ref('chores').remove()
+      .then(() => {
+        choreList = [];
 
-    // Reset timestamp state and hide toggle
-    showTimestamps = false;
-    localStorage.setItem('showTimestamps', 'false');
+        // Reset timestamp state and hide toggle
+        showTimestamps = false;
+        localStorage.setItem('showTimestamps', 'false');
 
-    const checkbox = document.getElementById('toggle-timestamp-checkbox');
-    const wrapper = document.getElementById('timestamp-toggle-wrapper');
-    if (checkbox) checkbox.checked = false;
-    if (wrapper) wrapper.style.display = 'none';
+        const checkbox = document.getElementById('toggle-timestamp-checkbox');
+        const wrapper = document.getElementById('timestamp-toggle-wrapper');
+        if (checkbox) checkbox.checked = false;
+        if (wrapper) wrapper.style.display = 'none';
 
-    renderChoreList();
-    showToast("All chores cleared");
+        renderChoreList();
+        showToast("All chores cleared");
+      })
+      .catch(error => {
+        console.error("Error clearing chores:", error);
+        showToast("❌ Failed to clear chores");
+      });
   }
 }
+
 
 
 // Simulate confetti

@@ -1,4 +1,4 @@
-screenshot_confetti.png/* ==== CSS RESET ==== */
+/* ==== CSS RESET ==== */
 * {
   margin: 0;
   padding: 0;
@@ -56,6 +56,7 @@ main {
   width: 100%;
   padding: 8px;
   margin-top: 5px;
+  margin-bottom: 12px;
   border: 1px solid #ccc;
   border-radius: 4px;
 }
@@ -97,7 +98,7 @@ main {
   text-align: center;
   font-weight: bold;
   color: white;
-  background-color: red; /* default, overwritten dynamically */
+  background-color: red;
 }
 
 .confetti-bg {
@@ -105,7 +106,6 @@ main {
   background-repeat: repeat;
   background-size: auto;
 }
-
 
 /* ==== CHORE ACTIONS ==== */
 .chore-actions {
@@ -176,20 +176,6 @@ button:hover {
   display: none;
 }
 
-/* ==== NOTIFICATIONS SECTION ==== */
-/* (currently unused) */
-/* #notifications {
-  margin-top: 30px;
-  background-color: #fff;
-  padding: 15px;
-  border: 1px solid #ddd;
-  border-radius: 5px;
-}
-
-#notifications h2 {
-  margin-bottom: 10px;
-} */
-
 /* ==== TOAST MESSAGE ==== */
 #toast {
   visibility: hidden;
@@ -225,5 +211,19 @@ button:hover {
 
   main {
     width: 100%;
+  }
+
+  .chore-actions button,
+  #controls button {
+    width: 100%;
+    margin-bottom: 10px;
+  }
+
+  button {
+    padding: 12px;
+  }
+
+  #chore-form textarea {
+    min-height: 100px;
   }
 }
