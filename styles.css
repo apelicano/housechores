@@ -61,24 +61,36 @@ main {
   border-radius: 4px;
 }
 
-#chore-user {
-  width: auto;
-  height: auto;
+/* ==== SELECT STYLES ==== */
+select {
   padding: 8px;
-  margin-top: auto;
-  margin-bottom: auto;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  min-width: 150px;
+}
+
+#chore-user,
+#filter-user {
+  padding: 8px;
   border: 1px solid #ccc;
   border-radius: 4px;
 }
 
+/* ==== FORM LAYOUT ==== */
 .form-row {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 10px;
   margin-top: 1em;
-  padding: 10px 25px;
+  padding: 5px 0;
+  flex-wrap: wrap;
 }
 
+.form-row label {
+  white-space: nowrap;
+  font-weight: bold;
+}
 
 /* ==== CHORE LIST ==== */
 #chore-list {
@@ -120,6 +132,7 @@ main {
   background-color: red;
 }
 
+/* ==== CONFETTI EFFECT ==== */
 .confetti-bg {
   background-image: url("https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExdmdpcXdmNTZhMm45MTJtbTR2Ymw2dmZscTFxd29vcHNwdnExaHVrbCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/5jT0jaNDsM6Ik7X9yq/giphy.gif");
   background-repeat: repeat;
@@ -244,5 +257,10 @@ button:hover {
 
   #chore-form textarea {
     min-height: 100px;
+  }
+
+  .form-row {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }

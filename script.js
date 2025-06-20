@@ -1,6 +1,4 @@
-// =============================
-// Firebase Configuration
-// =============================
+// ==== Firebase Config and Initialization ====
 const firebaseConfig = {
   apiKey: "AIzaSyBpCw-2-e8rR-4hZGE32-Ug6KJJcKSHnn8",
   authDomain: "family-chore-tracker-db5b2.firebaseapp.com",
@@ -11,31 +9,33 @@ const firebaseConfig = {
   appId: "1:1021277258690:web:2bd82da2661448fc800c5b"
 };
 
-// Initialize Firebase
 firebase.initializeApp(firebaseConfig);
-
-// Global state variables
-let choreList = [];
-let showTimestamps = false;
-let currentUserFilter = "All";
-
-// Anonymous sign-in to protect writes
-firebase.auth().signInAnonymously()
-  .then(() => {
-    console.log("✅ Signed in anonymously");
-    initApp(); // Proceed after successful auth
-  })
-  .catch((error) => {
-    console.error("❌ Anonymous sign-in failed:", error);
-  });
-
-// Firebase DB reference
 const db = firebase.database();
 const choresRef = db.ref("chores");
 
-// =============================
-// App Initialization
-// =============================
+let choreList = [];
+let showTimestamps = false;
+let currentUserFilter = "All";
+let showArchived = false; // Controls visibility of archived chores
+
+// ==== Anonymous Sign-in ====
+firebase.auth().signInAnonymously()
+  .then(() => {
+    console.log("✅ Signed in anonymously");
+    initApp();
+  })
+  .catch(error => {
+    console.error("❌ Sign-in failed:", error);
+  });
+
+// ==== DOM References ====
+const choreForm = document.getElementById('chore-form');
+const choreListDiv = document.getElementById('chore-list');
+const userSelect = document.getElementById('chore-user');
+const filterSelect = document.getElementById('filter-user');
+const toggleArchivedBtn = document.getElementById('toggle-archived-btn');
+
+// ==== Initialization ====
 function initApp() {
   const savedToggle = localStorage.getItem('showTimestamps');
   if (savedToggle) showTimestamps = savedToggle === 'true';
@@ -43,43 +43,23 @@ function initApp() {
   const checkbox = document.getElementById('toggle-timestamp-checkbox');
   if (checkbox) checkbox.checked = showTimestamps;
 
-  // Load chores from Firebase
-  choresRef.once('value')
-    .then(snapshot => {
-      const data = snapshot.val();
-      choreList = data ? Object.values(data) : [];
-      updateUserFilterOptions();
-      renderChoreList();
-    })
-    .catch(error => {
-      console.error("Failed to load chores from Firebase:", error);
-      choreList = [];
-      renderChoreList();
-    });
+  choresRef.on('value', snapshot => {
+    const data = snapshot.val();
+    choreList = data ? Object.values(data) : [];
+    updateUserFilterOptions();
+    renderChoreList();
+  });
 
-  // Attach event listeners
   setupEventListeners();
 }
 
-// =============================
-// DOM References
-// =============================
-const choreForm = document.getElementById('chore-form');
-const choreListDiv = document.getElementById('chore-list');
-const userSelect = document.getElementById('chore-user');
-const filterSelect = document.getElementById('filter-user');
-
-// =============================
-// Event Listeners
-// =============================
+// ==== Setup Event Listeners ====
 function setupEventListeners() {
-  // Form submission
-  choreForm.addEventListener('submit', event => {
-    event.preventDefault();
+  choreForm.addEventListener('submit', e => {
+    e.preventDefault();
     addNewChore();
   });
 
-  // Timestamp toggle
   const timestampCheckbox = document.getElementById('toggle-timestamp-checkbox');
   if (timestampCheckbox) {
     timestampCheckbox.addEventListener('change', () => {
@@ -89,24 +69,28 @@ function setupEventListeners() {
     });
   }
 
-  // Clear all
   const clearAllBtn = document.getElementById('clear-all-btn');
   if (clearAllBtn) {
     clearAllBtn.addEventListener('click', clearAllChores);
   }
 
-  // Filter by user
   if (filterSelect) {
     filterSelect.addEventListener('change', () => {
       currentUserFilter = filterSelect.value;
       renderChoreList();
     });
   }
+
+  if (toggleArchivedBtn) {
+    toggleArchivedBtn.addEventListener('click', () => {
+      showArchived = !showArchived;
+      toggleArchivedBtn.textContent = showArchived ? 'Hide Archived Chores' : 'Show Archived Chores';
+      renderChoreList();
+    });
+  }
 }
 
-// =============================
-// Add New Chore
-// =============================
+// ==== Add New Chore ====
 function addNewChore() {
   const title = document.getElementById('chore-title').value.trim();
   const description = document.getElementById('chore-description').value.trim();
@@ -123,54 +107,69 @@ function addNewChore() {
     title,
     description,
     progress,
+    user: assignedTo,
     timestamp: new Date().toISOString(),
-    user: assignedTo
+    archived: false
   };
 
   choresRef.child(newChore.id).set(newChore)
     .then(() => {
-      choreList.push(newChore);
       choreForm.reset();
-      document.getElementById('timestamp-toggle-wrapper').style.display = 'block';
-      updateUserFilterOptions();
-      renderChoreList();
+      showToast("✅ Chore added");
     })
     .catch(err => {
-      console.error("❌ Failed to add chore:", err);
-      showToast("❌ Could not save chore.");
+      console.error("Add failed:", err);
+      showToast("❌ Could not add chore");
     });
 }
 
-// =============================
-// Render Chore List
-// =============================
+// ==== Render Chores ====
 function renderChoreList() {
+  // Reset the list container
   choreListDiv.innerHTML = '<h2>Your Chores</h2>';
 
-  const filtered = currentUserFilter === "All"
-    ? choreList
-    : choreList.filter(c => c.user === currentUserFilter);
+  // Filter chores based on user filter and archive toggle
+  const filtered = choreList.filter(chore =>
+    (currentUserFilter === "All" || chore.user === currentUserFilter) &&
+    (showArchived || !chore.archived)
+  );
 
+  // ⬇️ Always check for visible non-archived chores before toggling timestamp UI
+  const hasVisibleNonArchived = filtered.some(c => !c.archived);
+  const timestampWrapper = document.getElementById('timestamp-toggle-wrapper');
+  if (timestampWrapper) {
+    timestampWrapper.style.display = hasVisibleNonArchived ? 'block' : 'none';
+  }
+
+  // If no chores match, show placeholder
   if (filtered.length === 0) {
-    choreListDiv.innerHTML += "<p>No chores yet.</p>";
-    document.getElementById('timestamp-toggle-wrapper').style.display = 'none';
+    choreListDiv.innerHTML += `<p>No chores to show.</p>`;
     return;
   }
 
-  document.getElementById('timestamp-toggle-wrapper').style.display = 'block';
-
+  // Render each matching chore
   filtered.forEach(chore => {
     const choreItem = document.createElement('div');
-    choreItem.classList.add('chore-item');
+    choreItem.className = 'chore-item';
 
+    // Title + User + Archived Label
     const titleElem = document.createElement('h3');
     titleElem.textContent = `${chore.title} (${chore.user})`;
+    if (chore.archived) {
+      const label = document.createElement('span');
+      label.textContent = ' [Archived]';
+      label.style.color = '#888';
+      label.style.fontSize = '0.9rem';
+      titleElem.appendChild(label);
+    }
     choreItem.appendChild(titleElem);
 
+    // Description (with basic sanitization)
     const descElem = document.createElement('p');
-    descElem.innerHTML = sanitizeHTML(chore.description).replace(/\n/g, '<br>');
+    descElem.innerHTML = sanitizeHTML(chore.description).replace(/\n/g, "<br>");
     choreItem.appendChild(descElem);
 
+    // Timestamp (optional)
     if (showTimestamps && chore.timestamp) {
       const timeElem = document.createElement('p');
       timeElem.textContent = 'Added: ' + new Date(chore.timestamp).toLocaleString();
@@ -180,14 +179,12 @@ function renderChoreList() {
 
     // Progress bar
     const progressContainer = document.createElement('div');
-    progressContainer.classList.add('progress-bar-container');
+    progressContainer.className = 'progress-bar-container';
 
     const progressBar = document.createElement('div');
-    progressBar.classList.add('progress-bar');
+    progressBar.className = 'progress-bar';
     progressBar.style.width = chore.progress + '%';
     progressBar.textContent = chore.progress + '%';
-
-    // Color based on progress level
     progressBar.style.backgroundColor =
       chore.progress === 100 ? 'green' :
       chore.progress >= 50 ? 'orange' : 'red';
@@ -195,78 +192,68 @@ function renderChoreList() {
     progressContainer.appendChild(progressBar);
     choreItem.appendChild(progressContainer);
 
-    // Buttons
-    const updateBtn = document.createElement('button');
-    updateBtn.textContent = 'Update Progress';
-    updateBtn.addEventListener('click', () => updateChoreProgress(chore.id));
-    choreItem.appendChild(updateBtn);
+    // Show these buttons only if NOT archived
+    if (!chore.archived) {
+      const updateBtn = document.createElement('button');
+      updateBtn.textContent = 'Update Progress';
+      updateBtn.onclick = () => updateChoreProgress(chore.id);
+      choreItem.appendChild(updateBtn);
 
-    const editBtn = document.createElement('button');
-    editBtn.textContent = 'Edit Task';
-    editBtn.style.marginLeft = '5px';
-    editBtn.addEventListener('click', () => editChore(chore.id));
-    choreItem.appendChild(editBtn);
+      const editBtn = document.createElement('button');
+      editBtn.textContent = 'Edit Task';
+      editBtn.style.marginLeft = '5px';
+      editBtn.onclick = () => editChore(chore.id);
+      choreItem.appendChild(editBtn);
+    }
 
-    const deleteBtn = document.createElement('button');
-    deleteBtn.textContent = 'Delete Chore';
-    deleteBtn.style.marginLeft = '5px';
-    deleteBtn.style.backgroundColor = '#f44336';
-    deleteBtn.addEventListener('click', () => deleteChore(chore.id));
-    choreItem.appendChild(deleteBtn);
+    // Archive/Unarchive toggle button (always visible)
+    const archiveBtn = document.createElement('button');
+    archiveBtn.textContent = chore.archived ? 'Unarchive' : 'Archive';
+    archiveBtn.style.marginLeft = '5px';
+    archiveBtn.onclick = () => toggleArchiveChore(chore.id, !chore.archived);
+    choreItem.appendChild(archiveBtn);
 
     choreListDiv.appendChild(choreItem);
 
+    // Trigger confetti if chore is complete
     if (chore.progress === 100) triggerConfetti();
   });
 }
 
-// =============================
-// Update Progress
-// =============================
+
+// ==== Archive/Unarchive Chore ====
+function toggleArchiveChore(choreId, isArchived) {
+  choresRef.child(choreId).update({ archived: isArchived })
+    .then(() => showToast(isArchived ? "✅ Chore archived" : "✅ Chore unarchived"))
+    .catch(err => {
+      console.error("Archive toggle failed:", err);
+      showToast("❌ Failed to update archive state");
+    });
+}
+
+// ==== Update Chore Progress ====
 function updateChoreProgress(choreId) {
   const chore = choreList.find(c => c.id === choreId);
   if (!chore) return;
-
   const newProgress = Math.min(chore.progress + 25, 100);
+
   choresRef.child(choreId).update({ progress: newProgress })
-    .then(() => {
-      chore.progress = newProgress;
-      renderChoreList();
-    })
-    .catch(error => {
-      console.error("Progress update error:", error);
+    .then(() => showToast("✅ Progress updated"))
+    .catch(err => {
+      console.error("Progress update failed:", err);
       showToast("❌ Failed to update progress");
     });
 }
 
-// =============================
-// Delete Chore
-// =============================
-function deleteChore(choreId) {
-  choresRef.child(choreId).remove()
-    .then(() => {
-      choreList = choreList.filter(c => c.id !== choreId);
-      renderChoreList();
-      updateUserFilterOptions();
-      showToast("Chore deleted");
-    })
-    .catch(error => {
-      console.error("Delete error:", error);
-      showToast("❌ Failed to delete chore");
-    });
-}
-
-// =============================
-// Edit Chore
-// =============================
+// ==== Edit Chore ====
 function editChore(choreId) {
   const chore = choreList.find(c => c.id === choreId);
   if (!chore) return;
 
-  const newTitle = prompt('Edit title:', chore.title);
-  const newDesc = prompt('Edit description:', chore.description);
-  const newProgress = prompt('Edit progress (0–100):', chore.progress);
-  const newUser = prompt('Edit assigned user:', chore.user);
+  const newTitle = prompt("Edit title:", chore.title);
+  const newDesc = prompt("Edit description:", chore.description);
+  const newProgress = prompt("Edit progress (0–100):", chore.progress);
+  const newUser = prompt("Edit assigned user:", chore.user);
 
   if ([newTitle, newDesc, newProgress, newUser].some(v => v === null)) return;
 
@@ -279,64 +266,60 @@ function editChore(choreId) {
   };
 
   choresRef.child(choreId).set(updated)
-    .then(() => {
-      const index = choreList.findIndex(c => c.id === choreId);
-      if (index !== -1) choreList[index] = updated;
-      updateUserFilterOptions();
-      renderChoreList();
-    })
+    .then(() => showToast("✅ Chore updated"))
     .catch(err => {
       console.error("Update error:", err);
       showToast("❌ Failed to update chore");
     });
 }
 
-// =============================
-// Clear All Chores
-// =============================
+// ==== Clear All Chores ====
 function clearAllChores() {
-  if (!confirm('Delete all chores?')) return;
+  if (!confirm('Clear all chores? This will archive them.')) return;
 
-  choresRef.remove()
+  const updates = {};
+  choreList.forEach(chore => {
+    updates[`${chore.id}/archived`] = true;
+  });
+
+  choresRef.update(updates)
     .then(() => {
-      choreList = [];
+      choreList = choreList.map(chore => ({ ...chore, archived: true }));
       showTimestamps = false;
       localStorage.setItem('showTimestamps', 'false');
       renderChoreList();
       updateUserFilterOptions();
+      showToast("All chores archived");
     })
     .catch(err => {
-      console.error("Clear error:", err);
-      showToast("❌ Failed to clear chores");
+      console.error("Archive error:", err);
+      showToast("❌ Failed to archive chores");
     });
 }
 
-// =============================
-// Helpers
-// =============================
-
+// ==== Filter Options ====
 function updateUserFilterOptions() {
   const users = Array.from(new Set(choreList.map(c => c.user))).sort();
   filterSelect.innerHTML = `<option value="All">All</option>` +
     users.map(u => `<option value="${u}">${u}</option>`).join('');
 }
 
-function showToast(msg = "Action completed") {
+// ==== Toast Message ====
+function showToast(msg = "Action done") {
   const toast = document.getElementById('toast');
   if (!toast) return;
-
   toast.textContent = msg;
   toast.classList.add('show');
   setTimeout(() => toast.classList.remove('show'), 3000);
 }
 
+// ==== Confetti Effect ====
 function triggerConfetti() {
-  console.log("🎉 Confetti!");
   document.body.classList.add('confetti-bg');
   setTimeout(() => document.body.classList.remove('confetti-bg'), 3000);
 }
 
-// Basic HTML sanitizer (allows <a>, <em>, <strong>)
+// ==== Basic HTML Sanitizer ====
 function sanitizeHTML(input) {
   const allowed = { 'A': ['href', 'target'], 'EM': [], 'STRONG': [] };
   const parser = new DOMParser();
